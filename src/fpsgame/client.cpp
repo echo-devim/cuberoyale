@@ -477,6 +477,7 @@ namespace game
     ICOMMAND(checkmaps, "", (), addmsg(N_CHECKMAPS, "r"));
 
     int gamemode = INT_MAX, nextmode = INT_MAX;
+    int storm_side = 0;
     string clientmap = "";
 
     void changemapserv(const char *name, int mode)        // forced map change from the server
@@ -1168,664 +1169,686 @@ namespace game
         int type;
         bool mapchanged = false, demopacket = false;
 
-        while(p.remaining()) switch(type = getint(p))
-        {
-            case N_DEMOPACKET: demopacket = true; break;
-
-            case N_SERVINFO:                   // welcome messsage from the server
+        while(p.remaining()) {
+            type = getint(p);
+            switch(type)
             {
-                int mycn = getint(p), prot = getint(p);
-                if(prot!=PROTOCOL_VERSION)
+                case N_DEMOPACKET: demopacket = true; break;
+
+                case N_SERVINFO:                   // welcome messsage from the server
                 {
-                    conoutf(CON_ERROR, "you are using a different game protocol (you: %d, server: %d)", PROTOCOL_VERSION, prot);
-                    disconnect();
-                    return;
-                }
-                sessionid = getint(p);
-                player1->clientnum = mycn;      // we are now connected
-                if(getint(p) > 0) conoutf("this server is password protected");
-                getstring(servinfo, p, sizeof(servinfo));
-                getstring(servauth, p, sizeof(servauth));
-                sendintro();
-                break;
-            }
-
-            case N_WELCOME:
-            {
-                notifywelcome();
-                break;
-            }
-
-            case N_PAUSEGAME:
-            {
-                bool val = getint(p) > 0;
-                int cn = getint(p);
-                fpsent *a = cn >= 0 ? getclient(cn) : NULL;
-                if(!demopacket)
-                {
-                    gamepaused = val;
-                    player1->attacking = false;
-                }
-                if(a) conoutf("%s %s the game", colorname(a), val ? "paused" : "resumed"); 
-                else conoutf("game is %s", val ? "paused" : "resumed");
-                break;
-            }
-
-            case N_GAMESPEED:
-            {
-                int val = clamp(getint(p), 10, 1000), cn = getint(p);
-                fpsent *a = cn >= 0 ? getclient(cn) : NULL;
-                if(!demopacket) gamespeed = val;
-                extern int slowmosp;
-                if(m_sp && slowmosp) break;
-                if(a) conoutf("%s set gamespeed to %d", colorname(a), val);
-                else conoutf("gamespeed is %d", val);
-                break;
-            }
-                
-            case N_CLIENT:
-            {
-                int cn = getint(p), len = getuint(p);
-                ucharbuf q = p.subbuf(len);
-                parsemessages(cn, getclient(cn), q);
-                break;
-            }
-
-            case N_SOUND:
-                if(!d) return;
-                playsound(getint(p), &d->o);
-                break;
-
-            case N_TEXT:
-            {
-                if(!d) return;
-                getstring(text, p);
-                filtertext(text, text);
-                if(isignored(d->clientnum)) break;
-                if(d->state!=CS_DEAD && d->state!=CS_SPECTATOR)
-                    particle_textcopy(d->abovehead(), text, PART_TEXT, 2000, 0x32FF64, 4.0f, -8);
-                conoutf(CON_CHAT, "%s:\f0 %s", colorname(d), text);
-                break;
-            }
-
-            case N_SAYTEAM:
-            {
-                int tcn = getint(p);
-                fpsent *t = getclient(tcn);
-                getstring(text, p);
-                filtertext(text, text);
-                if(!t || isignored(t->clientnum)) break;
-                if(t->state!=CS_DEAD && t->state!=CS_SPECTATOR)
-                    particle_textcopy(t->abovehead(), text, PART_TEXT, 2000, 0x6496FF, 4.0f, -8);
-                conoutf(CON_TEAMCHAT, "%s:\f1 %s", colorname(t), text);
-                break;
-            }
-
-            case N_MAPCHANGE:
-                getstring(text, p);
-                changemapserv(text, getint(p));
-                mapchanged = true;
-                if(getint(p)) entities::spawnitems();
-                else senditemstoserver = false;
-                break;
-
-            case N_FORCEDEATH:
-            {
-                int cn = getint(p);
-                fpsent *d = cn==player1->clientnum ? player1 : newclient(cn);
-                if(!d) break;
-                if(d==player1)
-                {
-                    if(editmode) toggleedit();
-                    stopfollowing();
-                    if(deathscore) showscores(true);
-                }
-                else d->resetinterp();
-                d->state = CS_DEAD;
-                break;
-            }
-
-            case N_ITEMLIST:
-            {
-                int n;
-                while((n = getint(p))>=0 && !p.overread())
-                {
-                    if(mapchanged) entities::setspawn(n, true);
-                    getint(p); // type
-                }
-                break;
-            }
-
-            case N_INITCLIENT:            // another client either connected or changed name/team
-            {
-                int cn = getint(p);
-                fpsent *d = newclient(cn);
-                if(!d)
-                {
-                    getstring(text, p);
-                    getstring(text, p);
-                    getint(p);
+                    int mycn = getint(p), prot = getint(p);
+                    if(prot!=PROTOCOL_VERSION)
+                    {
+                        conoutf(CON_ERROR, "you are using a different game protocol (you: %d, server: %d)", PROTOCOL_VERSION, prot);
+                        disconnect();
+                        return;
+                    }
+                    sessionid = getint(p);
+                    player1->clientnum = mycn;      // we are now connected
+                    if(getint(p) > 0) conoutf("this server is password protected");
+                    getstring(servinfo, p, sizeof(servinfo));
+                    getstring(servauth, p, sizeof(servauth));
+                    sendintro();
                     break;
                 }
-                getstring(text, p);
-                filtertext(text, text, false, MAXNAMELEN);
-                if(!text[0]) copystring(text, "unnamed");
-                if(d->name[0])          // already connected
-                {
-                    if(strcmp(d->name, text) && !isignored(d->clientnum))
-                        conoutf("%s is now known as %s", colorname(d), colorname(d, text));
-                }
-                else                    // new client
-                {
-                    conoutf("\f0join:\f7 %s", colorname(d, text));
-                    if(needclipboard >= 0) needclipboard++;
-                }
-                copystring(d->name, text, MAXNAMELEN+1);
-                getstring(text, p);
-                filtertext(d->team, text, false, MAXTEAMLEN);
-                d->playermodel = getint(p);
-                break;
-            }
 
-            case N_SWITCHNAME:
-                getstring(text, p);
-                if(d)
+                case N_WELCOME:
                 {
-                    filtertext(text, text, false, MAXNAMELEN);
-                    if(!text[0]) copystring(text, "unnamed");
-                    if(strcmp(text, d->name))
+                    notifywelcome();
+                    break;
+                }
+
+                case N_PAUSEGAME:
+                {
+                    bool val = getint(p) > 0;
+                    int cn = getint(p);
+                    fpsent *a = cn >= 0 ? getclient(cn) : NULL;
+                    if(!demopacket)
                     {
-                        if(!isignored(d->clientnum)) conoutf("%s is now known as %s", colorname(d), colorname(d, text));
-                        copystring(d->name, text, MAXNAMELEN+1);
+                        gamepaused = val;
+                        player1->attacking = false;
                     }
+                    if(a) conoutf("%s %s the game", colorname(a), val ? "paused" : "resumed"); 
+                    else conoutf("game is %s", val ? "paused" : "resumed");
+                    break;
                 }
-                break;
 
-            case N_SWITCHMODEL:
-            {
-                int model = getint(p);
-                if(d)
+                case N_GAMESPEED:
                 {
-                    d->playermodel = model;
-                    if(d->ragdoll) cleanragdoll(d);
+                    int val = clamp(getint(p), 10, 1000), cn = getint(p);
+                    fpsent *a = cn >= 0 ? getclient(cn) : NULL;
+                    if(!demopacket) gamespeed = val;
+                    extern int slowmosp;
+                    if(m_sp && slowmosp) break;
+                    if(a) conoutf("%s set gamespeed to %d", colorname(a), val);
+                    else conoutf("gamespeed is %d", val);
+                    break;
                 }
-                break;
-            }
-
-            case N_CDIS:
-                clientdisconnected(getint(p));
-                break;
-
-            case N_SPAWN:
-            {
-                if(d)
+                    
+                case N_CLIENT:
                 {
-                    if(d->state==CS_DEAD && d->lastpain) saveragdoll(d);
-                    d->respawn();
+                    int cn = getint(p), len = getuint(p);
+                    ucharbuf q = p.subbuf(len);
+                    parsemessages(cn, getclient(cn), q);
+                    break;
                 }
-                parsestate(d, p);
-                if(!d) break;
-                d->state = CS_SPAWNING;
-                if(player1->state==CS_SPECTATOR && following==d->clientnum)
-                    lasthit = 0;
-                break;
-            }
 
-            case N_SPAWNSTATE:
-            {
-                int scn = getint(p);
-                fpsent *s = getclient(scn);
-                if(!s) { parsestate(NULL, p); break; }
-                if(s->state==CS_DEAD && s->lastpain) saveragdoll(s);
-                if(s==player1)
+                case N_SOUND:
+                    if(!d) return;
+                    playsound(getint(p), &d->o);
+                    break;
+
+                case N_TEXT:
                 {
-                    if(editmode) toggleedit();
-                    stopfollowing();
-                }
-                s->respawn();
-                parsestate(s, p);
-                s->state = CS_ALIVE;
-                if(cmode) cmode->pickspawn(s);
-                else findplayerspawn(s);
-                if(s == player1)
-                {
-                    showscores(false);
-                    lasthit = 0;
-                }
-                if(cmode) cmode->respawned(s);
-				ai::spawned(s);
-                addmsg(N_SPAWN, "rcii", s, s->lifesequence, s->gunselect);
-                break;
-            }
-
-            case N_SHOTFX:
-            {
-                int scn = getint(p), gun = getint(p), id = getint(p);
-                vec from, to;
-                loopk(3) from[k] = getint(p)/DMF;
-                loopk(3) to[k] = getint(p)/DMF;
-                fpsent *s = getclient(scn);
-                if(!s) break;
-                if(gun>GUN_FIST && gun<=GUN_PISTOL && s->ammo[gun]) s->ammo[gun]--;
-                s->gunselect = clamp(gun, (int)GUN_FIST, (int)GUN_PISTOL);
-                s->gunwait = guns[s->gunselect].attackdelay;
-                int prevaction = s->lastaction;
-                s->lastaction = lastmillis;
-                s->lastattackgun = s->gunselect;
-                shoteffects(s->gunselect, from, to, s, false, id, prevaction);
-                break;
-            }
-
-            case N_EXPLODEFX:
-            {
-                int ecn = getint(p), gun = getint(p), id = getint(p);
-                fpsent *e = getclient(ecn);
-                if(!e) break;
-                explodeeffects(gun, e, false, id);
-                break;
-            }
-            case N_DAMAGE:
-            {
-                int tcn = getint(p),
-                    acn = getint(p),
-                    damage = getint(p),
-                    armour = getint(p),
-                    health = getint(p);
-                fpsent *target = getclient(tcn),
-                       *actor = getclient(acn);
-                if(!target || !actor) break;
-                target->armour = armour;
-                target->health = health;
-                if(target->state == CS_ALIVE && actor != player1) target->lastpain = lastmillis;
-                damaged(damage, target, actor, false);
-                break;
-            }
-
-            case N_HITPUSH:
-            {
-                int tcn = getint(p), gun = getint(p), damage = getint(p);
-                fpsent *target = getclient(tcn);
-                vec dir;
-                loopk(3) dir[k] = getint(p)/DNF;
-                if(target) target->hitpush(damage * (target->health<=0 ? deadpush : 1), dir, NULL, gun);
-                break;
-            }
-
-            case N_DIED:
-            {
-                int vcn = getint(p), acn = getint(p), frags = getint(p), tfrags = getint(p);
-                fpsent *victim = getclient(vcn),
-                       *actor = getclient(acn);
-                if(!actor) break;
-                actor->frags = frags;
-                if(m_teammode) setteaminfo(actor->team, tfrags);
-                if(actor!=player1 && (!cmode || !cmode->hidefrags()))
-                {
-                    defformatstring(ds)("%d", actor->frags);
-                    particle_textcopy(actor->abovehead(), ds, PART_TEXT, 2000, 0x32FF64, 4.0f, -8);
-                }
-                if(!victim) break;
-                killed(victim, actor);
-                break;
-            }
-
-            case N_TEAMINFO:
-                for(;;)
-                {
+                    if(!d) return;
                     getstring(text, p);
-                    if(p.overread() || !text[0]) break;
-                    int frags = getint(p);
-                    if(p.overread()) break;
-                    if(m_teammode) setteaminfo(text, frags);
+                    filtertext(text, text);
+                    if(isignored(d->clientnum)) break;
+                    if(d->state!=CS_DEAD && d->state!=CS_SPECTATOR)
+                        particle_textcopy(d->abovehead(), text, PART_TEXT, 2000, 0x32FF64, 4.0f, -8);
+                    conoutf(CON_CHAT, "%s:\f0 %s", colorname(d), text);
+                    break;
                 }
-                break;
 
-            case N_GUNSELECT:
-            {
-                if(!d) return;
-                int gun = getint(p);
-                d->gunselect = clamp(gun, int(GUN_FIST), int(GUN_PISTOL));
-                playsound(S_WEAPLOAD, &d->o);
-                break;
-            }
+                case N_SAYTEAM:
+                {
+                    int tcn = getint(p);
+                    fpsent *t = getclient(tcn);
+                    getstring(text, p);
+                    filtertext(text, text);
+                    if(!t || isignored(t->clientnum)) break;
+                    if(t->state!=CS_DEAD && t->state!=CS_SPECTATOR)
+                        particle_textcopy(t->abovehead(), text, PART_TEXT, 2000, 0x6496FF, 4.0f, -8);
+                    conoutf(CON_TEAMCHAT, "%s:\f1 %s", colorname(t), text);
+                    break;
+                }
 
-            case N_TAUNT:
-            {
-                if(!d) return;
-                d->lasttaunt = lastmillis;
-                break;
-            }
+                case N_MAPCHANGE:
+                    getstring(text, p);
+                    changemapserv(text, getint(p));
+                    mapchanged = true;
+                    if(getint(p)) entities::spawnitems();
+                    else senditemstoserver = false;
+                    break;
 
-            case N_RESUME:
-            {
-                for(;;)
+                case N_FORCEDEATH:
                 {
                     int cn = getint(p);
-                    if(p.overread() || cn<0) break;
-                    fpsent *d = (cn == player1->clientnum ? player1 : newclient(cn));
-                    parsestate(d, p, true);
-                }
-                break;
-            }
-
-            case N_ITEMSPAWN:
-            {
-                int i = getint(p);
-                if(!entities::ents.inrange(i)) break;
-                entities::setspawn(i, true);
-                ai::itemspawned(i);
-                playsound(S_ITEMSPAWN, &entities::ents[i]->o, NULL, 0, 0, 0, -1, 0, 1500);
-                #if 0
-                const char *name = entities::itemname(i);
-                if(name) particle_text(entities::ents[i]->o, name, PART_TEXT, 2000, 0x32FF64, 4.0f, -8);
-                #endif
-                int icon = entities::itemicon(i);
-                if(icon >= 0) particle_icon(vec(0.0f, 0.0f, 4.0f).add(entities::ents[i]->o), icon%4, icon/4, PART_HUD_ICON, 2000, 0xFFFFFF, 2.0f, -8);
-                break;
-            }
-
-            case N_ITEMACC:            // server acknowledges that I picked up this item
-            {
-                int i = getint(p), cn = getint(p);
-                fpsent *d = getclient(cn);
-                entities::pickupeffects(i, d);
-                break;
-            }
-
-            case N_CLIPBOARD:
-            {
-                int cn = getint(p), unpacklen = getint(p), packlen = getint(p);
-                fpsent *d = getclient(cn);
-                ucharbuf q = p.subbuf(max(packlen, 0));
-                if(d) unpackeditinfo(d->edit, q.buf, q.maxlen, unpacklen);
-                break;
-            }
-
-            case N_EDITF:              // coop editing messages
-            case N_EDITT:
-            case N_EDITM:
-            case N_FLIP:
-            case N_COPY:
-            case N_PASTE:
-            case N_ROTATE:
-            case N_REPLACE:
-            case N_DELCUBE:
-            {
-                if(!d) return;
-                selinfo sel;
-                sel.o.x = getint(p); sel.o.y = getint(p); sel.o.z = getint(p);
-                sel.s.x = getint(p); sel.s.y = getint(p); sel.s.z = getint(p);
-                sel.grid = getint(p); sel.orient = getint(p);
-                sel.cx = getint(p); sel.cxs = getint(p); sel.cy = getint(p), sel.cys = getint(p);
-                sel.corner = getint(p);
-                int dir, mode, tex, newtex, mat, filter, allfaces, insel;
-                ivec moveo;
-                switch(type)
-                {
-                    case N_EDITF: dir = getint(p); mode = getint(p); if(sel.validate()) mpeditface(dir, mode, sel, false); break;
-                    case N_EDITT: tex = getint(p); allfaces = getint(p); if(sel.validate()) mpedittex(tex, allfaces, sel, false); break;
-                    case N_EDITM: mat = getint(p); filter = getint(p); if(sel.validate()) mpeditmat(mat, filter, sel, false); break;
-                    case N_FLIP: if(sel.validate()) mpflip(sel, false); break;
-                    case N_COPY: if(d && sel.validate()) mpcopy(d->edit, sel, false); break;
-                    case N_PASTE: if(d && sel.validate()) mppaste(d->edit, sel, false); break;
-                    case N_ROTATE: dir = getint(p); if(sel.validate()) mprotate(dir, sel, false); break;
-                    case N_REPLACE: tex = getint(p); newtex = getint(p); insel = getint(p); if(sel.validate()) mpreplacetex(tex, newtex, insel>0, sel, false); break;
-                    case N_DELCUBE: if(sel.validate()) mpdelcube(sel, false); break;
-                }
-                break;
-            }
-            case N_REMIP:
-            {
-                if(!d) return;
-                conoutf("%s remipped", colorname(d));
-                mpremip(false);
-                break;
-            }
-            case N_EDITENT:            // coop edit of ent
-            {
-                if(!d) return;
-                int i = getint(p);
-                float x = getint(p)/DMF, y = getint(p)/DMF, z = getint(p)/DMF;
-                int type = getint(p);
-                int attr1 = getint(p), attr2 = getint(p), attr3 = getint(p), attr4 = getint(p), attr5 = getint(p);
-
-                mpeditent(i, vec(x, y, z), type, attr1, attr2, attr3, attr4, attr5, false);
-                break;
-            }
-            case N_EDITVAR:
-            {
-                if(!d) return;
-                int type = getint(p);
-                getstring(text, p);
-                string name;
-                filtertext(name, text, false, MAXSTRLEN-1);
-                ident *id = getident(name);
-                switch(type)
-                {
-                    case ID_VAR:
+                    fpsent *d = cn==player1->clientnum ? player1 : newclient(cn);
+                    if(!d) break;
+                    if(d==player1)
                     {
-                        int val = getint(p);
-                        if(id && id->flags&IDF_OVERRIDE && !(id->flags&IDF_READONLY)) setvar(name, val);
-                        break;
+                        if(editmode) toggleedit();
+                        stopfollowing();
+                        if(deathscore) showscores(true);
                     }
-                    case ID_FVAR:
+                    else d->resetinterp();
+                    d->state = CS_DEAD;
+                    break;
+                }
+
+                case N_ITEMLIST:
+                {
+                    int n;
+                    while((n = getint(p))>=0 && !p.overread())
                     {
-                        float val = getfloat(p);
-                        if(id && id->flags&IDF_OVERRIDE && !(id->flags&IDF_READONLY)) setfvar(name, val);
-                        break;
+                        if(mapchanged) entities::setspawn(n, true);
+                        getint(p); // type
                     }
-                    case ID_SVAR:
+                    break;
+                }
+
+                case N_INITCLIENT:            // another client either connected or changed name/team
+                {
+                    int cn = getint(p);
+                    fpsent *d = newclient(cn);
+                    if(!d)
                     {
                         getstring(text, p);
-                        if(id && id->flags&IDF_OVERRIDE && !(id->flags&IDF_READONLY)) setsvar(name, text);
+                        getstring(text, p);
+                        getint(p);
                         break;
                     }
-                }
-                printvar(d, id);
-                break;
-            }
-
-            case N_PONG:
-                addmsg(N_CLIENTPING, "i", player1->ping = (player1->ping*5+totalmillis-getint(p))/6);
-                break;
-
-            case N_CLIENTPING:
-                if(!d) return;
-                d->ping = getint(p);
-                break;
-
-            case N_TIMEUP:
-                timeupdate(getint(p));
-                break;
-
-            case N_SERVMSG:
-                getstring(text, p);
-                conoutf("%s", text);
-                break;
-
-            case N_SENDDEMOLIST:
-            {
-                int demos = getint(p);
-                if(demos <= 0) conoutf("no demos available");
-                else loopi(demos)
-                {
                     getstring(text, p);
-                    if(p.overread()) break;
-                    conoutf("%d. %s", i+1, text);
+                    filtertext(text, text, false, MAXNAMELEN);
+                    if(!text[0]) copystring(text, "unnamed");
+                    if(d->name[0])          // already connected
+                    {
+                        if(strcmp(d->name, text) && !isignored(d->clientnum))
+                            conoutf("%s is now known as %s", colorname(d), colorname(d, text));
+                    }
+                    else                    // new client
+                    {
+                        conoutf("\f0join:\f7 %s", colorname(d, text));
+                        if(needclipboard >= 0) needclipboard++;
+                    }
+                    copystring(d->name, text, MAXNAMELEN+1);
+                    getstring(text, p);
+                    filtertext(d->team, text, false, MAXTEAMLEN);
+                    d->playermodel = getint(p);
+                    break;
                 }
-                break;
-            }
 
-            case N_DEMOPLAYBACK:
-            {
-                int on = getint(p);
-                if(on) player1->state = CS_SPECTATOR;
-                else clearclients();
-                demoplayback = on!=0;
-                player1->clientnum = getint(p);
-                gamepaused = false;
-                const char *alias = on ? "demostart" : "demoend";
-                if(identexists(alias)) execute(alias);
-                break;
-            }
+                case N_SWITCHNAME:
+                    getstring(text, p);
+                    if(d)
+                    {
+                        filtertext(text, text, false, MAXNAMELEN);
+                        if(!text[0]) copystring(text, "unnamed");
+                        if(strcmp(text, d->name))
+                        {
+                            if(!isignored(d->clientnum)) conoutf("%s is now known as %s", colorname(d), colorname(d, text));
+                            copystring(d->name, text, MAXNAMELEN+1);
+                        }
+                    }
+                    break;
 
-            case N_CURRENTMASTER:
-            {
-                int mm = getint(p), mn;
-                loopv(players) players[i]->privilege = PRIV_NONE;
-                while((mn = getint(p))>=0 && !p.overread())
+                case N_SWITCHMODEL:
                 {
-                    fpsent *m = mn==player1->clientnum ? player1 : newclient(mn);
-                    int priv = getint(p);
-                    if(m) m->privilege = priv;
+                    int model = getint(p);
+                    if(d)
+                    {
+                        d->playermodel = model;
+                        if(d->ragdoll) cleanragdoll(d);
+                    }
+                    break;
                 }
-                if(mm != mastermode)
-                {
-                    mastermode = mm;
-                    conoutf("mastermode is %s (%d)", server::mastermodename(mastermode), mastermode);
-                }
-                break;
-            }
 
-            case N_MASTERMODE:
-            {
-                mastermode = getint(p);
-                conoutf("mastermode is %s (%d)", server::mastermodename(mastermode), mastermode);
-                break;
-            }
+                case N_CDIS:
+                    clientdisconnected(getint(p));
+                    break;
 
-            case N_EDITMODE:
-            {
-                int val = getint(p);
-                if(!d) break;
-                if(val)
+                case N_SPAWN:
                 {
-                    d->editstate = d->state;
-                    d->state = CS_EDITING;
+                    if(d)
+                    {
+                        if(d->state==CS_DEAD && d->lastpain) saveragdoll(d);
+                        d->respawn();
+                    }
+                    parsestate(d, p);
+                    if(!d) break;
+                    d->state = CS_SPAWNING;
+                    if(player1->state==CS_SPECTATOR && following==d->clientnum)
+                        lasthit = 0;
+                    break;
                 }
-                else
-                {
-                    d->state = d->editstate;
-                    if(d->state==CS_DEAD) deathstate(d, true);
-                }
-                break;
-            }
 
-            case N_SPECTATOR:
-            {
-                int sn = getint(p), val = getint(p);
-                fpsent *s;
-                if(sn==player1->clientnum)
+                case N_SPAWNSTATE:
                 {
-                    s = player1;
-                    if(val && remote && !player1->privilege) senditemstoserver = false;
-                }
-                else s = newclient(sn);
-                if(!s) return;
-                if(val)
-                {
+                    int scn = getint(p);
+                    fpsent *s = getclient(scn);
+                    if(!s) { parsestate(NULL, p); break; }
+                    if(s->state==CS_DEAD && s->lastpain) saveragdoll(s);
                     if(s==player1)
                     {
                         if(editmode) toggleedit();
-                        if(s->state==CS_DEAD) showscores(false);
-                        disablezoom();
+                        stopfollowing();
                     }
-                    s->state = CS_SPECTATOR;
+                    s->respawn();
+                    parsestate(s, p);
+                    s->state = CS_ALIVE;
+                    if(cmode) cmode->pickspawn(s);
+                    else findplayerspawn(s);
+                    if(s == player1)
+                    {
+                        showscores(false);
+                        lasthit = 0;
+                    }
+                    if(cmode) cmode->respawned(s);
+    				ai::spawned(s);
+                    addmsg(N_SPAWN, "rcii", s, s->lifesequence, s->gunselect);
+                    break;
                 }
-                else if(s->state==CS_SPECTATOR)
+
+                case N_SHOTFX:
                 {
-                    if(s==player1) stopfollowing();
-                    deathstate(s, true);
+                    int scn = getint(p), gun = getint(p), id = getint(p);
+                    vec from, to;
+                    loopk(3) from[k] = getint(p)/DMF;
+                    loopk(3) to[k] = getint(p)/DMF;
+                    fpsent *s = getclient(scn);
+                    if(!s) break;
+                    if(gun>GUN_FIST && gun<=GUN_PISTOL && s->ammo[gun]) s->ammo[gun]--;
+                    s->gunselect = clamp(gun, (int)GUN_FIST, (int)GUN_PISTOL);
+                    s->gunwait = guns[s->gunselect].attackdelay;
+                    int prevaction = s->lastaction;
+                    s->lastaction = lastmillis;
+                    s->lastattackgun = s->gunselect;
+                    shoteffects(s->gunselect, from, to, s, false, id, prevaction);
+                    break;
                 }
-                break;
-            }
 
-            case N_SETTEAM:
-            {
-                int wn = getint(p);
-                getstring(text, p);
-                int reason = getint(p);
-                fpsent *w = getclient(wn);
-                if(!w) return;
-                filtertext(w->team, text, false, MAXTEAMLEN);
-                static const char *fmt[2] = { "%s switched to team %s", "%s forced to team %s"};
-                if(reason >= 0 && size_t(reason) < sizeof(fmt)/sizeof(fmt[0]))
-                    conoutf(fmt[reason], colorname(w), w->team);
-                break;
-            }
-
-            #define PARSEMESSAGES 1
-            #include "capture.h"
-            #include "ctf.h"
-            #include "collect.h"
-            #undef PARSEMESSAGES
-
-            case N_ANNOUNCE:
-            {
-                int t = getint(p);
-                if     (t==I_QUAD)  { playsound(S_V_QUAD10, NULL, NULL, 0, 0, 0, -1, 0, 3000);  conoutf(CON_GAMEINFO, "\f2quad damage will spawn in 10 seconds!"); }
-                else if(t==I_BOOST) { playsound(S_V_BOOST10, NULL, NULL, 0, 0, 0, -1, 0, 3000); conoutf(CON_GAMEINFO, "\f2+10 health will spawn in 10 seconds!"); }
-                break;
-            }
-
-            case N_NEWMAP:
-            {
-                int size = getint(p);
-                if(size>=0) emptymap(size, true, NULL);
-                else enlargemap(true);
-                if(d && d!=player1)
+                case N_EXPLODEFX:
                 {
-                    int newsize = 0;
-                    while(1<<newsize < getworldsize()) newsize++;
-                    conoutf(size>=0 ? "%s started a new map of size %d" : "%s enlarged the map to size %d", colorname(d), newsize);
+                    int ecn = getint(p), gun = getint(p), id = getint(p);
+                    fpsent *e = getclient(ecn);
+                    if(!e) break;
+                    explodeeffects(gun, e, false, id);
+                    break;
                 }
-                break;
-            }
-
-            case N_REQAUTH:
-            {
-                getstring(text, p);
-                if(autoauth && text[0] && tryauth(text)) conoutf("server requested authkey \"%s\"", text);
-                break;
-            }
-
-            case N_AUTHCHAL:
-            {
-                getstring(text, p);
-                authkey *a = findauthkey(text);
-                uint id = (uint)getint(p);
-                getstring(text, p);
-                if(a && a->lastauth && lastmillis - a->lastauth < 60*1000)
+                case N_DAMAGE:
                 {
-                    vector<char> buf;
-                    answerchallenge(a->key, text, buf);
-                    //conoutf(CON_DEBUG, "answering %u, challenge %s with %s", id, text, buf.getbuf());
-                    addmsg(N_AUTHANS, "rsis", a->desc, id, buf.getbuf());
+                    int tcn = getint(p),
+                        acn = getint(p),
+                        damage = getint(p),
+                        armour = getint(p),
+                        health = getint(p);
+                    fpsent *target = getclient(tcn),
+                           *actor = getclient(acn);
+                    if(!target || !actor) break;
+                    target->armour = armour;
+                    target->health = health;
+                    if(target->state == CS_ALIVE && actor != player1) target->lastpain = lastmillis;
+                    damaged(damage, target, actor, false);
+                    break;
                 }
-                break;
+
+                case N_HITPUSH:
+                {
+                    int tcn = getint(p), gun = getint(p), damage = getint(p);
+                    fpsent *target = getclient(tcn);
+                    vec dir;
+                    loopk(3) dir[k] = getint(p)/DNF;
+                    if(target) target->hitpush(damage * (target->health<=0 ? deadpush : 1), dir, NULL, gun);
+                    break;
+                }
+
+                case N_DIED:
+                {
+                    int vcn = getint(p), acn = getint(p), frags = getint(p), tfrags = getint(p);
+                    fpsent *victim = getclient(vcn),
+                           *actor = getclient(acn);
+                    if(!actor) break;
+                    actor->frags = frags;
+                    if(m_teammode) setteaminfo(actor->team, tfrags);
+                    if(actor!=player1 && (!cmode || !cmode->hidefrags()))
+                    {
+                        defformatstring(ds)("%d", actor->frags);
+                        particle_textcopy(actor->abovehead(), ds, PART_TEXT, 2000, 0x32FF64, 4.0f, -8);
+                    }
+                    if(!victim) break;
+                    killed(victim, actor);
+                    break;
+                }
+
+                case N_TEAMINFO:
+                    for(;;)
+                    {
+                        getstring(text, p);
+                        if(p.overread() || !text[0]) break;
+                        int frags = getint(p);
+                        if(p.overread()) break;
+                        if(m_teammode) setteaminfo(text, frags);
+                    }
+                    break;
+
+                case N_GUNSELECT:
+                {
+                    if(!d) return;
+                    int gun = getint(p);
+                    d->gunselect = clamp(gun, int(GUN_FIST), int(GUN_PISTOL));
+                    playsound(S_WEAPLOAD, &d->o);
+                    break;
+                }
+
+                case N_TAUNT:
+                {
+                    if(!d) return;
+                    d->lasttaunt = lastmillis;
+                    break;
+                }
+
+                case N_RESUME:
+                {
+                    for(;;)
+                    {
+                        int cn = getint(p);
+                        if(p.overread() || cn<0) break;
+                        fpsent *d = (cn == player1->clientnum ? player1 : newclient(cn));
+                        parsestate(d, p, true);
+                    }
+                    break;
+                }
+
+                case N_ITEMSPAWN:
+                {
+                    int i = getint(p);
+                    if(!entities::ents.inrange(i)) break;
+                    entities::setspawn(i, true);
+                    ai::itemspawned(i);
+                    playsound(S_ITEMSPAWN, &entities::ents[i]->o, NULL, 0, 0, 0, -1, 0, 1500);
+                    #if 0
+                    const char *name = entities::itemname(i);
+                    if(name) particle_text(entities::ents[i]->o, name, PART_TEXT, 2000, 0x32FF64, 4.0f, -8);
+                    #endif
+                    int icon = entities::itemicon(i);
+                    if(icon >= 0) particle_icon(vec(0.0f, 0.0f, 4.0f).add(entities::ents[i]->o), icon%4, icon/4, PART_HUD_ICON, 2000, 0xFFFFFF, 2.0f, -8);
+                    break;
+                }
+
+                case N_ITEMACC:            // server acknowledges that I picked up this item
+                {
+                    int i = getint(p), cn = getint(p);
+                    fpsent *d = getclient(cn);
+                    entities::pickupeffects(i, d);
+                    break;
+                }
+
+                case N_CLIPBOARD:
+                {
+                    int cn = getint(p), unpacklen = getint(p), packlen = getint(p);
+                    fpsent *d = getclient(cn);
+                    ucharbuf q = p.subbuf(max(packlen, 0));
+                    if(d) unpackeditinfo(d->edit, q.buf, q.maxlen, unpacklen);
+                    break;
+                }
+
+                case N_EDITF:              // coop editing messages
+                case N_EDITT:
+                case N_EDITM:
+                case N_FLIP:
+                case N_COPY:
+                case N_PASTE:
+                case N_ROTATE:
+                case N_REPLACE:
+                case N_DELCUBE:
+                {
+                    if(!d) return;
+                    selinfo sel;
+                    sel.o.x = getint(p); sel.o.y = getint(p); sel.o.z = getint(p);
+                    sel.s.x = getint(p); sel.s.y = getint(p); sel.s.z = getint(p);
+                    sel.grid = getint(p); sel.orient = getint(p);
+                    sel.cx = getint(p); sel.cxs = getint(p); sel.cy = getint(p), sel.cys = getint(p);
+                    sel.corner = getint(p);
+                    int dir, mode, tex, newtex, mat, filter, allfaces, insel;
+                    ivec moveo;
+                    switch(type)
+                    {
+                        case N_EDITF: dir = getint(p); mode = getint(p); if(sel.validate()) mpeditface(dir, mode, sel, false); break;
+                        case N_EDITT: tex = getint(p); allfaces = getint(p); if(sel.validate()) mpedittex(tex, allfaces, sel, false); break;
+                        case N_EDITM: mat = getint(p); filter = getint(p); if(sel.validate()) mpeditmat(mat, filter, sel, false); break;
+                        case N_FLIP: if(sel.validate()) mpflip(sel, false); break;
+                        case N_COPY: if(d && sel.validate()) mpcopy(d->edit, sel, false); break;
+                        case N_PASTE: if(d && sel.validate()) mppaste(d->edit, sel, false); break;
+                        case N_ROTATE: dir = getint(p); if(sel.validate()) mprotate(dir, sel, false); break;
+                        case N_REPLACE: tex = getint(p); newtex = getint(p); insel = getint(p); if(sel.validate()) mpreplacetex(tex, newtex, insel>0, sel, false); break;
+                        case N_DELCUBE: if(sel.validate()) mpdelcube(sel, false); break;
+                    }
+                    break;
+                }
+                case N_REMIP:
+                {
+                    if(!d) return;
+                    conoutf("%s remipped", colorname(d));
+                    mpremip(false);
+                    break;
+                }
+                case N_EDITENT:            // coop edit of ent
+                {
+                    if(!d) return;
+                    int i = getint(p);
+                    float x = getint(p)/DMF, y = getint(p)/DMF, z = getint(p)/DMF;
+                    int type = getint(p);
+                    int attr1 = getint(p), attr2 = getint(p), attr3 = getint(p), attr4 = getint(p), attr5 = getint(p);
+
+                    mpeditent(i, vec(x, y, z), type, attr1, attr2, attr3, attr4, attr5, false);
+                    break;
+                }
+                case N_EDITVAR:
+                {
+                    if(!d) return;
+                    int type = getint(p);
+                    getstring(text, p);
+                    string name;
+                    filtertext(name, text, false, MAXSTRLEN-1);
+                    ident *id = getident(name);
+                    switch(type)
+                    {
+                        case ID_VAR:
+                        {
+                            int val = getint(p);
+                            if(id && id->flags&IDF_OVERRIDE && !(id->flags&IDF_READONLY)) setvar(name, val);
+                            break;
+                        }
+                        case ID_FVAR:
+                        {
+                            float val = getfloat(p);
+                            if(id && id->flags&IDF_OVERRIDE && !(id->flags&IDF_READONLY)) setfvar(name, val);
+                            break;
+                        }
+                        case ID_SVAR:
+                        {
+                            getstring(text, p);
+                            if(id && id->flags&IDF_OVERRIDE && !(id->flags&IDF_READONLY)) setsvar(name, text);
+                            break;
+                        }
+                    }
+                    printvar(d, id);
+                    break;
+                }
+
+                case N_PONG:
+                    addmsg(N_CLIENTPING, "i", player1->ping = (player1->ping*5+totalmillis-getint(p))/6);
+                    break;
+
+                case N_CLIENTPING:
+                    if(!d) return;
+                    d->ping = getint(p);
+                    break;
+
+                case N_TIMEUP:
+                    timeupdate(getint(p));
+                    break;
+
+                case N_STORMSIDE:
+                    storm_side = getint(p);
+                    //inform the player displaying the message about the storm direction
+                	switch (storm_side) {
+                        case NORTH:
+                            conoutf("The storm is coming from north");
+                            break;
+                        case EAST:
+                            conoutf("The storm is coming from east");
+                            break;
+                        case SOUTH:
+                            conoutf("The storm is coming from south");
+                            break;
+                        case WEST:
+                            conoutf("The storm is coming from west");
+                            break;    
+                    }
+                	break;
+
+                case N_SERVMSG:
+                    getstring(text, p);
+                    conoutf("%s", text);
+                    break;
+
+                case N_SENDDEMOLIST:
+                {
+                    int demos = getint(p);
+                    if(demos <= 0) conoutf("no demos available");
+                    else loopi(demos)
+                    {
+                        getstring(text, p);
+                        if(p.overread()) break;
+                        conoutf("%d. %s", i+1, text);
+                    }
+                    break;
+                }
+
+                case N_DEMOPLAYBACK:
+                {
+                    int on = getint(p);
+                    if(on) player1->state = CS_SPECTATOR;
+                    else clearclients();
+                    demoplayback = on!=0;
+                    player1->clientnum = getint(p);
+                    gamepaused = false;
+                    const char *alias = on ? "demostart" : "demoend";
+                    if(identexists(alias)) execute(alias);
+                    break;
+                }
+
+                case N_CURRENTMASTER:
+                {
+                    int mm = getint(p), mn;
+                    loopv(players) players[i]->privilege = PRIV_NONE;
+                    while((mn = getint(p))>=0 && !p.overread())
+                    {
+                        fpsent *m = mn==player1->clientnum ? player1 : newclient(mn);
+                        int priv = getint(p);
+                        if(m) m->privilege = priv;
+                    }
+                    if(mm != mastermode)
+                    {
+                        mastermode = mm;
+                        conoutf("mastermode is %s (%d)", server::mastermodename(mastermode), mastermode);
+                    }
+                    break;
+                }
+
+                case N_MASTERMODE:
+                {
+                    mastermode = getint(p);
+                    conoutf("mastermode is %s (%d)", server::mastermodename(mastermode), mastermode);
+                    break;
+                }
+
+                case N_EDITMODE:
+                {
+                    int val = getint(p);
+                    if(!d) break;
+                    if(val)
+                    {
+                        d->editstate = d->state;
+                        d->state = CS_EDITING;
+                    }
+                    else
+                    {
+                        d->state = d->editstate;
+                        if(d->state==CS_DEAD) deathstate(d, true);
+                    }
+                    break;
+                }
+
+                case N_SPECTATOR:
+                {
+                    int sn = getint(p), val = getint(p);
+                    fpsent *s;
+                    if(sn==player1->clientnum)
+                    {
+                        s = player1;
+                        if(val && remote && !player1->privilege) senditemstoserver = false;
+                    }
+                    else s = newclient(sn);
+                    if(!s) return;
+                    if(val)
+                    {
+                        if(s==player1)
+                        {
+                            if(editmode) toggleedit();
+                            if(s->state==CS_DEAD) showscores(false);
+                            disablezoom();
+                        }
+                        s->state = CS_SPECTATOR;
+                    }
+                    else if(s->state==CS_SPECTATOR)
+                    {
+                        if(s==player1) stopfollowing();
+                        deathstate(s, true);
+                    }
+                    break;
+                }
+
+                case N_SETTEAM:
+                {
+                    int wn = getint(p);
+                    getstring(text, p);
+                    int reason = getint(p);
+                    fpsent *w = getclient(wn);
+                    if(!w) return;
+                    filtertext(w->team, text, false, MAXTEAMLEN);
+                    static const char *fmt[2] = { "%s switched to team %s", "%s forced to team %s"};
+                    if(reason >= 0 && size_t(reason) < sizeof(fmt)/sizeof(fmt[0]))
+                        conoutf(fmt[reason], colorname(w), w->team);
+                    break;
+                }
+
+                #define PARSEMESSAGES 1
+                #include "capture.h"
+                #include "ctf.h"
+                #include "collect.h"
+                #undef PARSEMESSAGES
+
+                case N_ANNOUNCE:
+                {
+                    int t = getint(p);
+                    if     (t==I_QUAD)  { playsound(S_V_QUAD10, NULL, NULL, 0, 0, 0, -1, 0, 3000);  conoutf(CON_GAMEINFO, "\f2quad damage will spawn in 10 seconds!"); }
+                    else if(t==I_BOOST) { playsound(S_V_BOOST10, NULL, NULL, 0, 0, 0, -1, 0, 3000); conoutf(CON_GAMEINFO, "\f2+10 health will spawn in 10 seconds!"); }
+                    break;
+                }
+
+                case N_NEWMAP:
+                {
+                    int size = getint(p);
+                    if(size>=0) emptymap(size, true, NULL);
+                    else enlargemap(true);
+                    if(d && d!=player1)
+                    {
+                        int newsize = 0;
+                        while(1<<newsize < getworldsize()) newsize++;
+                        conoutf(size>=0 ? "%s started a new map of size %d" : "%s enlarged the map to size %d", colorname(d), newsize);
+                    }
+                    break;
+                }
+
+                case N_REQAUTH:
+                {
+                    getstring(text, p);
+                    if(autoauth && text[0] && tryauth(text)) conoutf("server requested authkey \"%s\"", text);
+                    break;
+                }
+
+                case N_AUTHCHAL:
+                {
+                    getstring(text, p);
+                    authkey *a = findauthkey(text);
+                    uint id = (uint)getint(p);
+                    getstring(text, p);
+                    if(a && a->lastauth && lastmillis - a->lastauth < 60*1000)
+                    {
+                        vector<char> buf;
+                        answerchallenge(a->key, text, buf);
+                        //conoutf(CON_DEBUG, "answering %u, challenge %s with %s", id, text, buf.getbuf());
+                        addmsg(N_AUTHANS, "rsis", a->desc, id, buf.getbuf());
+                    }
+                    break;
+                }
+
+                case N_INITAI:
+                {
+                    int bn = getint(p), on = getint(p), at = getint(p), sk = clamp(getint(p), 1, 101), pm = getint(p);
+                    string name, team;
+                    getstring(text, p);
+                    filtertext(name, text, false, MAXNAMELEN);
+                    getstring(text, p);
+                    filtertext(team, text, false, MAXTEAMLEN);
+                    fpsent *b = newclient(bn);
+                    if(!b) break;
+                    ai::init(b, at, on, sk, bn, pm, name, team);
+                    break;
+                }
+
+                case N_SERVCMD:
+                    getstring(text, p);
+                    break;
+
+                default:
+                    neterr("type", cn < 0);
+                    return;
             }
-
-            case N_INITAI:
-            {
-                int bn = getint(p), on = getint(p), at = getint(p), sk = clamp(getint(p), 1, 101), pm = getint(p);
-                string name, team;
-                getstring(text, p);
-                filtertext(name, text, false, MAXNAMELEN);
-                getstring(text, p);
-                filtertext(team, text, false, MAXTEAMLEN);
-                fpsent *b = newclient(bn);
-                if(!b) break;
-                ai::init(b, at, on, sk, bn, pm, name, team);
-                break;
-            }
-
-            case N_SERVCMD:
-                getstring(text, p);
-                break;
-
-            default:
-                neterr("type", cn < 0);
-                return;
         }
     }
 
