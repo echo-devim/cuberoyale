@@ -38,6 +38,36 @@ namespace game
         glEnd();
     }
 
+
+    void drawhud(fpsent *d, int w, int h) {
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        int s = 1800/4, x = 1800*w/h - s - s/10, y = s/10;
+        glColor4f(1, 1, 1, minimapalpha);
+        if(minimapalpha >= 1) glDisable(GL_BLEND);
+        bindminimap();
+        drawminimap(d, x, y, s);
+        if(minimapalpha >= 1) glEnable(GL_BLEND);
+        glColor3f(1, 1, 1);
+        float margin = 0.04f, roffset = s*margin, rsize = s + 2*roffset;
+        settexture("packages/hud/radar.png", 3);
+        drawradar(x - roffset, y - roffset, rsize);
+        /* TODO: draw N/S/E/W on top of the minimap/radar
+        glPushMatrix();
+        glScalef(2, 2, 1);
+        //TODO: replace with icons
+        draw_textf("N", x/2, 0);
+        glPopMatrix();
+        */
+        //Radar rotation:
+        /*
+        glPushMatrix();
+        glTranslatef(x - roffset + 0.5f*rsize, y - roffset + 0.5f*rsize, 0);
+        glRotatef(camera1->yaw + 180, 0, 0, -1);
+        drawradar(-0.5f*rsize, -0.5f*rsize, rsize);
+        glPopMatrix();
+        */
+    }
+
     void drawteammate(fpsent *d, float x, float y, float s, fpsent *o, float scale)
     {
         vec dir = d->o;
@@ -90,7 +120,143 @@ namespace game
         }
         if(dead) glEnd();
     }
-        
+
+
+    float abovegameplayhud(int w, int h)
+    {
+        switch(hudplayer()->state)
+        {
+            case CS_EDITING:
+            case CS_SPECTATOR:
+                return 1;
+            default:
+                return 1650.0f/1800.0f;
+        }
+    }
+
+    int ammohudup[3] = { GUN_CG, GUN_RL, GUN_GL },
+        ammohuddown[3] = { GUN_RIFLE, GUN_SG, GUN_PISTOL },
+        ammohudcycle[7] = { -1, -1, -1, -1, -1, -1, -1 };
+
+    ICOMMAND(ammohudup, "V", (tagval *args, int numargs),
+    {
+        loopi(3) ammohudup[i] = i < numargs ? getweapon(args[i].getstr()) : -1;
+    });
+
+    ICOMMAND(ammohuddown, "V", (tagval *args, int numargs),
+    {
+        loopi(3) ammohuddown[i] = i < numargs ? getweapon(args[i].getstr()) : -1;
+    });
+
+    ICOMMAND(ammohudcycle, "V", (tagval *args, int numargs),
+    {
+        loopi(7) ammohudcycle[i] = i < numargs ? getweapon(args[i].getstr()) : -1;
+    });
+
+    VARP(ammohud, 0, 1, 1);
+
+    void drawammohud(fpsent *d)
+    {
+        float x = HICON_X + 2*HICON_STEP, y = HICON_Y, sz = HICON_SIZE;
+        glPushMatrix();
+        glScalef(1/3.2f, 1/3.2f, 1);
+        float xup = (x+sz)*3.2f, yup = y*3.2f + 0.1f*sz;
+        loopi(3)
+        {
+            int gun = ammohudup[i];
+            if(gun < GUN_FIST || gun > GUN_PISTOL || gun == d->gunselect || !d->ammo[gun]) continue;
+            drawicon(HICON_FIST+gun, xup, yup, sz);
+            yup += sz;
+        }
+        float xdown = x*3.2f - sz, ydown = (y+sz)*3.2f - 0.1f*sz;
+        loopi(3)
+        {
+            int gun = ammohuddown[3-i-1];
+            if(gun < GUN_FIST || gun > GUN_PISTOL || gun == d->gunselect || !d->ammo[gun]) continue;
+            ydown -= sz;
+            drawicon(HICON_FIST+gun, xdown, ydown, sz);
+        }
+        int offset = 0, num = 0;
+        loopi(7)
+        {
+            int gun = ammohudcycle[i];
+            if(gun < GUN_FIST || gun > GUN_PISTOL) continue;
+            if(gun == d->gunselect) offset = i + 1;
+            else if(d->ammo[gun]) num++;
+        }
+        float xcycle = (x+sz/2)*3.2f + 0.5f*num*sz, ycycle = y*3.2f-sz;
+        loopi(7)
+        {
+            int gun = ammohudcycle[(i + offset)%7];
+            if(gun < GUN_FIST || gun > GUN_PISTOL || gun == d->gunselect || !d->ammo[gun]) continue;
+            xcycle -= sz;
+            drawicon(HICON_FIST+gun, xcycle, ycycle, sz);
+        }
+        glPopMatrix();
+    }
+
+    void drawhudicons(fpsent *d)
+    {
+        glPushMatrix();
+        glScalef(2, 2, 1);
+
+        draw_textf("%d", (HICON_X + HICON_SIZE + HICON_SPACE)/2, HICON_TEXTY/2, d->state==CS_DEAD ? 0 : d->health);
+        if(d->state!=CS_DEAD)
+        {
+            if(d->armour) draw_textf("%d", (HICON_X + HICON_STEP + HICON_SIZE + HICON_SPACE)/2, HICON_TEXTY/2, d->armour);
+            draw_textf("%d", (HICON_X + 2*HICON_STEP + HICON_SIZE + HICON_SPACE)/2, HICON_TEXTY/2, d->ammo[d->gunselect]);
+        }
+
+        glPopMatrix();
+
+        drawicon(HICON_HEALTH, HICON_X, HICON_Y);
+        if(d->state!=CS_DEAD)
+        {
+            if(d->armour) drawicon(HICON_BLUE_ARMOUR+d->armourtype, HICON_X + HICON_STEP, HICON_Y);
+            drawicon(HICON_FIST+d->gunselect, HICON_X + 2*HICON_STEP, HICON_Y);
+            if(d->quadmillis) drawicon(HICON_QUAD, HICON_X + 3*HICON_STEP, HICON_Y);
+            if(ammohud) drawammohud(d);
+        }
+    }
+
+    void gameplayhud(int w, int h)
+    {
+        glPushMatrix();
+        glScalef(h/1800.0f, h/1800.0f, 1);
+
+        if(player1->state==CS_SPECTATOR)
+        {
+            int pw, ph, tw, th, fw, fh;
+            text_bounds("  ", pw, ph);
+            text_bounds("SPECTATOR", tw, th);
+            th = max(th, ph);
+            fpsent *f = followingplayer();
+            text_bounds(f ? colorname(f) : " ", fw, fh);
+            fh = max(fh, ph);
+            draw_text("SPECTATOR", w*1800/h - tw - pw, 1650 - th - fh);
+            if(f) 
+            {
+                int color = f->state!=CS_DEAD ? 0xFFFFFF : 0x606060;
+                if(f->privilege)
+                {
+                    color = f->privilege>=PRIV_ADMIN ? 0xFF8000 : 0x40FF80;
+                    if(f->state==CS_DEAD) color = (color>>1)&0x7F7F7F;
+                }
+                draw_text(colorname(f), w*1800/h - fw - pw, 1650 - fh, (color>>16)&0xFF, (color>>8)&0xFF, color&0xFF);
+            }
+        }
+
+        fpsent *d = hudplayer();
+        if(d->state!=CS_EDITING)
+        {
+            if(d->state!=CS_SPECTATOR) drawhudicons(d);
+            if(cmode) cmode->drawhud(d, w, h);
+            drawhud(d, w, h);
+        }
+
+        glPopMatrix();
+    }
+
     #include "capture.h"
     #include "ctf.h"
     #include "collect.h"
