@@ -1291,7 +1291,12 @@ namespace ai
             }
             if(d->state == CS_DEAD && d->respawned!=d->lifesequence && (!cmode || cmode->respawnwait(d) <= 0) && lastmillis - d->lastpain >= 500)
             {
-                addmsg(N_TRYSPAWN, "rc", d);
+                if (d->deaths > 0) {
+                    addmsg(N_KICK, "rc", d);
+                } else {
+                    d->deaths++;
+                    addmsg(N_TRYSPAWN, "rc", d);
+                }
                 d->respawned = d->lifesequence;
             }
             else if(d->state == CS_ALIVE && run)

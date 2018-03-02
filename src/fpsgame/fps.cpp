@@ -292,6 +292,8 @@ namespace game
     {
         if(player1->state==CS_DEAD)
         {
+            player1->state = CS_SPECTATOR;
+            /*
             player1->attacking = false;
             int wait = cmode ? cmode->respawnwait(player1) : 0;
             if(wait>0)
@@ -308,6 +310,7 @@ namespace game
                 conoutf(CON_GAMEINFO, "\f2You wasted another life! The monsters stole your armour and some ammo...");
                 loopi(NUMGUNS) if(i!=GUN_PISTOL && (player1->ammo[i] = savedammo[i]) > 5) player1->ammo[i] = max(player1->ammo[i]/3, 5);
             }
+            */
         }
     }
 
@@ -433,7 +436,7 @@ namespace game
             else conoutf(contype, "\f2%s fragged %s", aname, dname);
         }
         deathstate(d);
-		ai::killed(d, actor);
+	ai::killed(d, actor);
     }
 
     void timeupdate(int secs)
