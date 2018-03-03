@@ -643,7 +643,7 @@ namespace game
     ICOMMAND(checkmaps, "", (), addmsg(N_CHECKMAPS, "r"));
 
     int gamemode = INT_MAX, nextmode = INT_MAX;
-    int storm_side = 0;
+    int dangerzone = 0;
     string clientmap = "";
 
     void changemapserv(const char *name, int mode)        // forced map change from the server
@@ -1807,10 +1807,10 @@ namespace game
                     timeupdate(getint(p));
                     break;
 
-                case N_STORMSIDE:
-                    storm_side = getint(p);
-                    //inform the player displaying the message about the storm direction
-                	switch (storm_side) {
+                case N_DANGERZONE:
+                    dangerzone = getint(p);
+                    //inform the player displaying the message about the dangerzone direction
+                	switch (dangerzone) {
                         case NORTH:
                             conoutf("The storm is coming from north");
                             break;

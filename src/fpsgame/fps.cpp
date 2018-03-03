@@ -230,6 +230,19 @@ namespace game
         }
     }
 
+    //Function to update the progress of the danger zone, resizing the safe area
+    void updatedangerzone(int curtime) {
+        conoutf("total millis %d, curtime %d\n", totalmillis, curtime);
+        //creatergbasurface / create_ent
+        //The danger zone is just a dark wall moving from one corner to the opposite corner
+    }
+
+    /* called in updateworld, decrease health if true */
+    bool am_i_in_dangerzone() {
+        //calculate if player's position is behind the dark (not completely black) surface/cube
+        return false;
+    }
+
     void updateworld()        // main game update loop
     {
         if(!maptime) { maptime = lastmillis; maprealtime = totalmillis; return; }
@@ -248,6 +261,7 @@ namespace game
         gets2c();
         updatemovables(curtime);
         updatemonsters(curtime);
+        updatedangerzone(curtime);
         if(player1->state == CS_DEAD)
         {
             if(player1->ragdoll) moveragdoll(player1);
