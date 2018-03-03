@@ -327,6 +327,7 @@ extern void fixmapname(char *name);
 extern void getmapfilenames(const char *fname, const char *cname, char *pakname, char *mapname, char *cfgname);
 extern uint getmapcrc();
 extern void clearmapcrc();
+/** load entities from the map fname into the ents vector */
 extern bool loadents(const char *fname, vector<entity> &ents, uint *crc = NULL);
 
 // physics

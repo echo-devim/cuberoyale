@@ -6,7 +6,9 @@ namespace game
     int maptime = 0, maprealtime = 0, maplimit = -1;
     int respawnent = -1;
     int lasthit = 0, lastspawnattempt = 0;
-
+    int delta_millis = 0;
+    int elapsed_millis = 0;
+    int previous_millis = 0;
     int following = -1, followdir = 0;
 
     fpsent *player1 = NULL;         // our client
@@ -231,16 +233,82 @@ namespace game
     }
 
     //Function to update the progress of the danger zone, resizing the safe area
-    void updatedangerzone(int curtime) {
-        conoutf("total millis %d, curtime %d\n", totalmillis, curtime);
+    void updatedangerzone() {
+        int elapsed_millis = delta_millis - max(maplimit - lastmillis, 0);
         //creatergbasurface / create_ent
         //The danger zone is just a dark wall moving from one corner to the opposite corner
-    }
+        //hints: player->inwater
+        //conoutf("x %d y %d z %d\n", getworldsize()/4, getworldsize()/4, getworldsize()/2);
+        //time to go forward related to the depth of the wall (i.e. related to its 'step')
+        if (elapsed_millis - previous_millis > DANGERZONE_DEPTH * 1000) {
+            selinfo sel;
+            int gridsize = getworldsize() / sel.grid;
+            //new map: sel.o.x = 2048; sel.o.y = 2088; sel.o.z = 2048; sel.s.x = 1; sel.s.y = 1; sel.s.z = 1; sel.grid = 8; sel.orient = 5; sel.cx = 0; sel.cxs = 2; sel.cy = 0; sel.cys = 2; sel.corner = 0;
+            //conoutf("wall y: %d + %d = %d\n", getworldsize()/4, ((elapsed_millis/1000) * DANGERZONE_DEPTH), getworldsize()/4 + ((elapsed_millis/1000) * DANGERZONE_DEPTH));
+            sel.o.z = getworldsize()/2; sel.s.z = DANGERZONE_HEIGHT;
+            /* sel.grid = 8; by default in the constructor */
+            sel.cxs = getworldsize()/4;
+            int player1_axis;
+            int dangerzone_axis = (elapsed_millis/1000) * DANGERZONE_DEPTH;
+            dangerzone_position = SOUTH;
+            switch (dangerzone_position) { //received by the server
+                //TODO: fixme, show some reference related to coordinates to the player (e.g. on the radar)     
+                case SOUTH:
+                    player1_axis = player1->o.y;
+                    sel.o.x = 0; sel.o.y = dangerzone_axis;
+                    sel.s.x = gridsize; sel.s.y = DANGERZONE_DEPTH;
+                    break;
+                case NORTH:
+                    dangerzone_axis = getworldsize() - dangerzone_axis;
+                    player1_axis = player1->o.y;
+                    sel.o.x = 0; sel.o.y = dangerzone_axis;
+                    sel.s.x = gridsize; sel.s.y = DANGERZONE_DEPTH;
+                    break;
+                case EAST:
+                    dangerzone_axis = getworldsize() - dangerzone_axis;
+                    player1_axis = player1->o.x;
+                    sel.o.x = dangerzone_axis; sel.o.y = 0;
+                    sel.s.x = DANGERZONE_DEPTH; sel.s.y = gridsize;
+                    break;
+                default: //case WEST
+                    player1_axis = player1->o.x;
+                    sel.o.x = dangerzone_axis; sel.o.y = 0;
+                    sel.s.x = DANGERZONE_DEPTH; sel.s.y = gridsize;
+            }
 
-    /* called in updateworld, decrease health if true */
-    bool am_i_in_dangerzone() {
-        //calculate if player's position is behind the dark (not completely black) surface/cube
-        return false;
+            int borderline = dangerzone_axis + (DANGERZONE_DEPTH * sel.grid);
+            //reder the dangerzone, moving it forward, as a wall of water only if the player is enough close 
+            if (abs(player1_axis - borderline) < VIEW_DISTANCE) {
+                //and if he is looking in the right direction
+                //if ...
+                //the following are heavy instructions, try to exec it as less as possible to avoid a loss of fps
+                //the order is important. First clean the old area, then render the new one.
+                int backup = dangerzone_axis;
+                //restore the old position of the wall and clean that area
+                dangerzone_axis = (previous_millis/1000) * DANGERZONE_DEPTH;
+                if ((dangerzone_position == SOUTH) || (dangerzone_position == NORTH)) sel.o.y = dangerzone_axis;
+                else sel.o.x = dangerzone_axis;
+                //conoutf("clean wall from %d to %d\n", sel.o.y, sel.s.y);
+                /*mpeditmat(MAT_AIR, 0, sel, false); //equivalent to delete the old wall of water
+                if ((dangerzone_position == SOUTH) || (dangerzone_position == NORTH)) sel.o.y = backup;
+                else sel.o.x = backup;*/
+                //create a new wall of water in a different position
+                //conoutf("render wall from %d to %d\n", sel.o.y, sel.s.y);
+                mpeditmat(MAT_WATER, 0, sel, false); //alternative: use MAT_LAVA and remove the next lines of code
+
+
+            }
+            //if the player is behind the dangerzone
+            if ((((dangerzone_position == EAST) || (dangerzone_position == NORTH)) && (player1_axis > borderline)) ||
+                (((dangerzone_position == SOUTH) || (dangerzone_position == WEST)) && (player1_axis < borderline))) {
+                player1->health = player1->health - 5;
+                //TODO: decrease brightness of the environment
+                //playsound(S_PAIN1+rnd(5), &player1->o);
+                if (player1->health < 0)
+                    killed(player1, player1); //i.e. suicide
+            }
+            previous_millis = elapsed_millis;
+        }
     }
 
     void updateworld()        // main game update loop
@@ -261,7 +329,7 @@ namespace game
         gets2c();
         updatemovables(curtime);
         updatemonsters(curtime);
-        updatedangerzone(curtime);
+        updatedangerzone();
         if(player1->state == CS_DEAD)
         {
             if(player1->ragdoll) moveragdoll(player1);
@@ -457,7 +525,8 @@ namespace game
     {
         if(secs > 0)
         {
-            maplimit = lastmillis + secs*1000;
+            delta_millis = secs*1000;
+            maplimit = lastmillis + delta_millis;
         }
         else
         {

@@ -1166,7 +1166,8 @@ void startmap(const char *name)
     game::startmap(name);
 }
 
-bool emptymap(int scale, bool force, const char *mname, bool usecfg)    // main empty world creation routine
+/** main empty world creation routine */
+bool emptymap(int scale, bool force, const char *mname, bool usecfg)
 {
     if(!force && !editmode) 
     {
@@ -1184,6 +1185,7 @@ bool emptymap(int scale, bool force, const char *mname, bool usecfg)    // main 
     worldroot = newcubes(F_EMPTY);
     loopi(4) solidfaces(worldroot[i]);
 
+    //if worldscale=12, then 1<<worldscale = 0x1000 = 4096
     if(worldsize > 0x1000) splitocta(worldroot, worldsize>>1);
 
     clearmainmenu();

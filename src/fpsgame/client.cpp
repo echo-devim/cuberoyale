@@ -643,7 +643,7 @@ namespace game
     ICOMMAND(checkmaps, "", (), addmsg(N_CHECKMAPS, "r"));
 
     int gamemode = INT_MAX, nextmode = INT_MAX;
-    int dangerzone = 0;
+    int dangerzone_position = 0;
     string clientmap = "";
 
     void changemapserv(const char *name, int mode)        // forced map change from the server
@@ -755,6 +755,7 @@ namespace game
 
     void edittrigger(const selinfo &sel, int op, int arg1, int arg2, int arg3)
     {
+        conoutf("sel.o.x = %d; sel.o.y = %d; sel.o.z = %d; sel.s.x = %d; sel.s.y = %d; sel.s.z = %d; sel.grid = %d; sel.orient = %d; sel.cx = %d; sel.cxs = %d; sel.cy = %d; sel.cys = %d; sel.corner = %d;\n",sel.o.x , sel.o.y , sel.o.z , sel.s.x , sel.s.y , sel.s.z , sel.grid , sel.orient , sel.cx , sel.cxs , sel.cy, sel.cys , sel.corner);
         if(m_edit) switch(op)
         {
             case EDIT_FLIP:
@@ -790,6 +791,7 @@ namespace game
             case EDIT_FACE:
             case EDIT_TEX:
             {
+                conoutf("mpeditmat(%d, %d, sel, false)\n", arg1, arg2); //mat, filter
                 addmsg(N_EDITF + op, "ri9i6",
                    sel.o.x, sel.o.y, sel.o.z, sel.s.x, sel.s.y, sel.s.z, sel.grid, sel.orient,
                    sel.cx, sel.cxs, sel.cy, sel.cys, sel.corner,
@@ -1725,7 +1727,7 @@ namespace game
                     sel.o.x = getint(p); sel.o.y = getint(p); sel.o.z = getint(p);
                     sel.s.x = getint(p); sel.s.y = getint(p); sel.s.z = getint(p);
                     sel.grid = getint(p); sel.orient = getint(p);
-                    sel.cx = getint(p); sel.cxs = getint(p); sel.cy = getint(p), sel.cys = getint(p);
+                    sel.cx = getint(p); sel.cxs = getint(p); sel.cy = getint(p); sel.cys = getint(p);
                     sel.corner = getint(p);
                     int dir, mode, tex, newtex, mat, filter, allfaces, insel;
                     ivec moveo;
@@ -1808,9 +1810,9 @@ namespace game
                     break;
 
                 case N_DANGERZONE:
-                    dangerzone = getint(p);
+                    dangerzone_position = getint(p);
                     //inform the player displaying the message about the dangerzone direction
-                	switch (dangerzone) {
+                	switch (dangerzone_position) {
                         case NORTH:
                             conoutf("The storm is coming from north");
                             break;

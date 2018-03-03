@@ -20,6 +20,11 @@ enum
 #define DNF 100.0f              // for normalized vectors
 #define DVELF 1.0f              // for playerspeed based velocity vectors
 
+#define DANGERZONE_HEIGHT 30
+#define DANGERZONE_DEPTH 10 //this value shouldn't be big to avoid too much rendering (and thus lagging, because it decreases fps)
+#define VIEW_DISTANCE 300 //minimum distance needed to render the dangerzone
+#define DANGERZONE_DAMAGE 5 //damage inflicted to the players inside the dangerzone. The damage is repeated over the time.
+
 enum                            // static entity types
 {
     NOTUSED = ET_EMPTY,         // entity slot not in use in map
@@ -711,7 +716,7 @@ namespace game
     extern int respawnent;
     extern int following;
     extern int smoothmove, smoothdist;
-    extern int dangerzone;
+    extern int dangerzone_position;
 
     extern bool clientoption(const char *arg);
     extern fpsent *getclient(int cn);
