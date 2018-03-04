@@ -240,7 +240,7 @@ namespace game
         //hints: player->inwater
         //conoutf("x %d y %d z %d\n", getworldsize()/4, getworldsize()/4, getworldsize()/2);
         //time to go forward related to the depth of the wall (i.e. related to its 'step')
-        if (elapsed_millis - previous_millis > DANGERZONE_DEPTH * 1000) {
+        if (elapsed_millis - previous_millis > 1000) {
             selinfo sel;
             int gridsize = getworldsize() / sel.grid;
             //new map: sel.o.x = 2048; sel.o.y = 2088; sel.o.z = 2048; sel.s.x = 1; sel.s.y = 1; sel.s.z = 1; sel.grid = 8; sel.orient = 5; sel.cx = 0; sel.cxs = 2; sel.cy = 0; sel.cys = 2; sel.corner = 0;
@@ -249,34 +249,43 @@ namespace game
             /* sel.grid = 8; by default in the constructor */
             sel.cxs = getworldsize()/4;
             int player1_axis;
-            int dangerzone_axis = (elapsed_millis/1000) * DANGERZONE_DEPTH;
-            dangerzone_position = SOUTH;
+            int borderline;
+            int worldsize = 0;
+            int speed = 1;
+            int dangerzone_axis = (elapsed_millis/1000) * DANGERZONE_DEPTH * speed;
+            dangerzone_position = EAST;
             switch (dangerzone_position) { //received by the server
-                //TODO: fixme, show some reference related to coordinates to the player (e.g. on the radar)     
+                //TODO: fixme, show some reference related to coordinates to the player (e.g. on the radar)
+                //TODO: show the dangerzone on the radar     
                 case SOUTH:
                     player1_axis = player1->o.y;
+                    borderline = dangerzone_axis + (DANGERZONE_DEPTH * sel.grid);
                     sel.o.x = 0; sel.o.y = dangerzone_axis;
                     sel.s.x = gridsize; sel.s.y = DANGERZONE_DEPTH;
                     break;
                 case NORTH:
+                    worldsize = getworldsize();
                     dangerzone_axis = getworldsize() - dangerzone_axis;
+                    borderline = dangerzone_axis - (DANGERZONE_DEPTH * sel.grid);
                     player1_axis = player1->o.y;
                     sel.o.x = 0; sel.o.y = dangerzone_axis;
                     sel.s.x = gridsize; sel.s.y = DANGERZONE_DEPTH;
                     break;
-                case EAST:
+                case WEST:
+                    worldsize = getworldsize();
                     dangerzone_axis = getworldsize() - dangerzone_axis;
+                    borderline = dangerzone_axis - (DANGERZONE_DEPTH * sel.grid);
                     player1_axis = player1->o.x;
                     sel.o.x = dangerzone_axis; sel.o.y = 0;
                     sel.s.x = DANGERZONE_DEPTH; sel.s.y = gridsize;
                     break;
-                default: //case WEST
+                default: //case EAST
+                    borderline = dangerzone_axis + (DANGERZONE_DEPTH * sel.grid);
                     player1_axis = player1->o.x;
                     sel.o.x = dangerzone_axis; sel.o.y = 0;
                     sel.s.x = DANGERZONE_DEPTH; sel.s.y = gridsize;
             }
-
-            int borderline = dangerzone_axis + (DANGERZONE_DEPTH * sel.grid);
+            //conoutf("player1 %d, borderline %d\n", player1_axis, borderline);
             //reder the dangerzone, moving it forward, as a wall of water only if the player is enough close 
             if (abs(player1_axis - borderline) < VIEW_DISTANCE) {
                 //and if he is looking in the right direction
@@ -285,22 +294,25 @@ namespace game
                 //the order is important. First clean the old area, then render the new one.
                 int backup = dangerzone_axis;
                 //restore the old position of the wall and clean that area
-                dangerzone_axis = (previous_millis/1000) * DANGERZONE_DEPTH;
+                dangerzone_axis = abs(worldsize - ((previous_millis/1000) * DANGERZONE_DEPTH * speed));
                 if ((dangerzone_position == SOUTH) || (dangerzone_position == NORTH)) sel.o.y = dangerzone_axis;
                 else sel.o.x = dangerzone_axis;
                 //conoutf("clean wall from %d to %d\n", sel.o.y, sel.s.y);
-                /*mpeditmat(MAT_AIR, 0, sel, false); //equivalent to delete the old wall of water
+                mpeditmat(MAT_AIR, 0, sel, false); //equivalent to delete the old wall of water
                 if ((dangerzone_position == SOUTH) || (dangerzone_position == NORTH)) sel.o.y = backup;
-                else sel.o.x = backup;*/
+                else sel.o.x = backup;
                 //create a new wall of water in a different position
                 //conoutf("render wall from %d to %d\n", sel.o.y, sel.s.y);
                 mpeditmat(MAT_WATER, 0, sel, false); //alternative: use MAT_LAVA and remove the next lines of code
 
 
             }
+            //TODO: the following instructions should be repeated each second
+            //Tip: render the position of dm each 10 secs and save its pos in a variable
+            //then check every second if the player overcome the bordline of pos
             //if the player is behind the dangerzone
-            if ((((dangerzone_position == EAST) || (dangerzone_position == NORTH)) && (player1_axis > borderline)) ||
-                (((dangerzone_position == SOUTH) || (dangerzone_position == WEST)) && (player1_axis < borderline))) {
+            if ((((dangerzone_position == WEST) || (dangerzone_position == NORTH)) && (player1_axis > borderline)) ||
+                (((dangerzone_position == SOUTH) || (dangerzone_position == EAST)) && (player1_axis < borderline))) {
                 player1->health = player1->health - 5;
                 //TODO: decrease brightness of the environment
                 //playsound(S_PAIN1+rnd(5), &player1->o);
