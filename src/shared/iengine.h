@@ -342,7 +342,7 @@ extern bool movecamera(physent *pl, const vec &dir, float dist, float stepdist);
 extern void physicsframe();
 extern void dropenttofloor(entity *e);
 extern bool droptofloor(vec &o, float radius, float height);
-
+extern void crouchplayer(physent *pl, int moveres, bool local);
 extern void vecfromyawpitch(float yaw, float pitch, int move, int strafe, vec &m);
 extern void vectoyawpitch(const vec &v, float &yaw, float &pitch);
 extern bool moveplatform(physent *p, const vec &dir);

@@ -212,6 +212,7 @@ namespace game
             }
             if(d->state==CS_ALIVE || d->state==CS_EDITING)
             {
+                crouchplayer(d, 0, false);
                 if(smoothmove && d->smoothmillis>0) predictplayer(d, true);
                 else moveplayer(d, 1, false);
             }
@@ -251,9 +252,8 @@ namespace game
             int player1_axis;
             int borderline;
             int worldsize = 0;
-            int speed = 1;
+            int speed = 10; //calc this variable based on the map size and the total amount of time available for the match
             int dangerzone_axis = (elapsed_millis/1000) * DANGERZONE_DEPTH * speed;
-            dangerzone_position = EAST;
             switch (dangerzone_position) { //received by the server
                 //TODO: fixme, show some reference related to coordinates to the player (e.g. on the radar)
                 //TODO: show the dangerzone on the radar     
@@ -354,6 +354,7 @@ namespace game
         else if(!intermission)
         {
             if(player1->ragdoll) cleanragdoll(player1);
+            crouchplayer(player1, 0, true);
             moveplayer(player1, 10, true);
             swayhudgun(curtime);
             entities::checkitems(player1);
@@ -414,6 +415,11 @@ namespace game
     {
         if(intermission) return;
         if((player1->attacking = on)) respawn();
+    }
+
+    bool cancrouch()
+    {
+        return player1->state!=CS_DEAD && !intermission;
     }
 
     bool canjump()

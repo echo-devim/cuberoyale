@@ -1479,6 +1479,48 @@ bool move(physent *d, vec &dir)
     return !collided;
 }
 
+void crouchplayer(physent *pl, int moveres, bool local) //ported from tesseract
+{
+    if(!curtime) return;
+    float minheight = pl->maxheight * CROUCHHEIGHT, speed = (pl->maxheight - minheight) * curtime / float(CROUCHTIME);
+    if(pl->crouching < 0)
+    {
+        if(pl->eyeheight > minheight)
+        {
+            float diff = min(pl->eyeheight - minheight, speed);
+            pl->eyeheight -= diff;
+            if(pl->physstate > PHYS_FALL)
+            {
+                pl->o.z -= diff;
+                pl->newpos.z -= diff;
+            }
+        }
+    }
+    else if(pl->eyeheight < pl->maxheight)
+    {
+        float diff = min(pl->maxheight - pl->eyeheight, speed), step = diff/moveres;
+        pl->eyeheight += diff;
+        if(pl->physstate > PHYS_FALL)
+        {
+            pl->o.z += diff;
+            pl->newpos.z += diff;
+        }
+        pl->crouching = 0;
+        //TODO: do we really need this loop? because with moveres > 0 the player stay crouched (not wanted)
+        loopi(moveres)
+        {
+            if(!collide(pl, vec(0, 0, pl->physstate <= PHYS_FALL ? -1 : 1), 0, true)) break;
+            pl->crouching = 1;
+            pl->eyeheight -= step;
+            if(pl->physstate > PHYS_FALL)
+            {
+                pl->o.z -= step;
+                pl->newpos.z -= step;
+            }
+        }
+    }
+}
+
 bool bounce(physent *d, float secs, float elasticity, float waterfric, float grav)
 {
     // make sure bouncers don't start inside geometry
@@ -1661,7 +1703,7 @@ void vectoyawpitch(const vec &v, float &yaw, float &pitch)
 VARP(maxroll, 0, 0, 20);
 FVAR(straferoll, 0, 0.033f, 90);
 FVAR(faderoll, 0, 0.95f, 1);
-VAR(floatspeed, 1, 100, 10000);
+VAR(floatspeed, 1, 1000, 10000);
 
 void modifyvelocity(physent *pl, bool local, bool water, bool floating, int curtime)
 {
@@ -1713,6 +1755,8 @@ void modifyvelocity(physent *pl, bool local, bool water, bool floating, int curt
         {
             if(pl==player) d.mul(floatspeed/100.0f);
         }
+        //reduce speed if the player is crouched
+        else if(pl->crouching) d.mul(0.4f);
         else if(!water && game::allowmove(pl)) d.mul((pl->move && !pl->strafe ? 1.3f : 1.0f) * (pl->physstate < PHYS_SLOPE ? 1.3f : 1.0f));
     }
     float fric = water && !floating ? 20.0f : (pl->physstate >= PHYS_SLOPE || floating ? 6.0f : 30.0f);
@@ -1784,7 +1828,7 @@ bool moveplayer(physent *pl, int moveres, bool local, int curtime)
         pl->o.add(d);
     }
     else                        // apply velocity with collision
-    {
+    {      
         const float f = 1.0f/moveres;
         const int timeinair = pl->timeinair;
         int collisions = 0;
@@ -2093,6 +2137,7 @@ dir(right,    strafe, -1, k_right, k_left);
 
 ICOMMAND(jump,   "D", (int *down), { if(!*down || game::canjump()) player->jumping = *down!=0; });
 ICOMMAND(attack, "D", (int *down), { game::doattack(*down!=0); });
+ICOMMAND(crouch, "D", (int *down), { if(!*down) player->crouching = abs(player->crouching); else if(game::cancrouch()) player->crouching = -1; });
 
 bool entinmap(dynent *d, bool avoidplayers)        // brute force but effective way to find a free spawn spot in the map
 {

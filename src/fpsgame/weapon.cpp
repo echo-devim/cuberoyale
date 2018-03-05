@@ -772,11 +772,15 @@ namespace game
         float dist = to.dist(from, unitv);
         unitv.div(dist);
         vec kickback(unitv);
-        kickback.mul(guns[d->gunselect].kickamount*-2.5f);
-        d->vel.add(kickback);
+        if(!(d->physstate >= PHYS_SLOPE && d->crouching && d->crouched()))
+        {
+            kickback.mul(guns[d->gunselect].kickamount*-2.5f);
+            d->vel.add(kickback);
+        }
         float shorten = 0;
         if(guns[d->gunselect].range && dist > guns[d->gunselect].range)
             shorten = guns[d->gunselect].range;
+
         float barrier = raycube(d->o, unitv, dist, RAY_CLIPMAT|RAY_ALPHAPOLY);
         if(barrier > 0 && barrier < dist && (!shorten || barrier < shorten))
             shorten = barrier;
