@@ -879,7 +879,7 @@ struct animmodel : model
 
         void setanim(int animpart, int num, int frame, int range, float speed, int priority = 0)
         {
-            if(animpart<0 || animpart>=MAXANIMPARTS) return;
+            if(animpart < 0 || animpart >= MAXANIMPARTS || num < 0 || num >= NUMANIMS) return;
             if(frame<0 || range<=0 || !meshes || !meshes->hasframes(frame, range))
             {
                 conoutf("invalid frame %d, range %d in model %s", frame, range, model->loadname);
