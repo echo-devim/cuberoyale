@@ -212,7 +212,7 @@ namespace game
             }
             if(d->state==CS_ALIVE || d->state==CS_EDITING)
             {
-                crouchplayer(d, 0, false);
+                crouchplayer(d, 1, false);
                 if(smoothmove && d->smoothmillis>0) predictplayer(d, true);
                 else moveplayer(d, 1, false);
             }
@@ -385,9 +385,10 @@ namespace game
 
     void respawn()
     {
+        //TODO: put the players in a queue and respawn them only at the beginning of the next match
         if(player1->state==CS_DEAD)
         {
-            player1->state = CS_SPECTATOR;
+            addmsg(N_SPECTATOR, "rii", player1->clientnum, true);
             /*
             player1->attacking = false;
             int wait = cmode ? cmode->respawnwait(player1) : 0;
