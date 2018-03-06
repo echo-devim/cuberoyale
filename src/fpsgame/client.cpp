@@ -643,6 +643,7 @@ namespace game
     ICOMMAND(checkmaps, "", (), addmsg(N_CHECKMAPS, "r"));
 
     int gamemode = INT_MAX, nextmode = INT_MAX;
+    int gamelimit = 0; //total millis for the match
     int dangerzone_position = 0;
     string clientmap = "";
 
@@ -1813,6 +1814,7 @@ namespace game
 
                 case N_DANGERZONE:
                     dangerzone_position = getint(p);
+                    gamelimit = getint(p);
                     //inform the player displaying the message about the dangerzone direction
                 	switch (dangerzone_position) {
                         case NORTH:

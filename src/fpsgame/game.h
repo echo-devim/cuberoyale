@@ -21,7 +21,7 @@ enum
 #define DVELF 1.0f              // for playerspeed based velocity vectors
 
 #define DANGERZONE_HEIGHT 30
-#define DANGERZONE_DEPTH 10 //this value shouldn't be big to avoid too much rendering (and thus lagging, because it decreases fps)
+#define DANGERZONE_DEPTH 1 //this value shouldn't be big to avoid too much rendering (and thus lagging, because it decreases fps)
 #define VIEW_DISTANCE 300 //minimum distance needed to render the dangerzone
 #define DANGERZONE_DAMAGE 5 //damage inflicted to the players inside the dangerzone. The damage is repeated over the time.
 
@@ -717,6 +717,7 @@ namespace game
     extern int following;
     extern int smoothmove, smoothdist;
     extern int dangerzone_position;
+    extern int gamelimit;
 
     extern bool clientoption(const char *arg);
     extern fpsent *getclient(int cn);

@@ -387,7 +387,7 @@ namespace server
 
     bool notgotitems = true;        // true when map has changed and waiting for clients to send item
     int gamemode = 0;
-    int dangerzone = 0;
+    int dangerzone_position = 0;
     int gamemillis = 0, gamelimit = 0, nextexceeded = 0, gamespeed = 100;
     bool gamepaused = false, shouldstep = true;
 
@@ -1770,7 +1770,8 @@ namespace server
         putint(p, gamemode);
         putint(p, notgotitems ? 1 : 0);
         putint(p, N_DANGERZONE);
-        putint(p, dangerzone);
+        putint(p, dangerzone_position);
+        putint(p, gamelimit);
         if(!ci || (m_timed && smapname[0]))
         {
             putint(p, N_TIMEUP);
@@ -1965,9 +1966,9 @@ namespace server
         if(m_timed && smapname[0]) sendf(-1, 1, "ri2", N_TIMEUP, gamemillis < gamelimit && !interm ? max((gamelimit - gamemillis)/1000, 1) : 0);
 
         //choose randomly the side of the map from which the dangerzone (i.e. non-safe area) will come from
-        dangerzone = rnd(4);
+        dangerzone_position = rnd(4);
         //send the chosen side to the clients
-        sendf(-1, 1, "ri2", N_DANGERZONE, dangerzone);
+        sendf(-1, 1, "ri3", N_DANGERZONE, dangerzone_position, gamelimit);
 
         loopv(clients)
         {
