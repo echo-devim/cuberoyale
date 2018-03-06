@@ -1506,7 +1506,6 @@ void crouchplayer(physent *pl, int moveres, bool local) //ported from tesseract
             pl->newpos.z += diff;
         }
         pl->crouching = 0;
-        //TODO: do we really need this loop? because with moveres > 0 the player stay crouched (not wanted)
         loopi(moveres)
         {
             if(!collide(pl, vec(0, 0, pl->physstate <= PHYS_FALL ? -1 : 1), 0, true)) break;
@@ -2130,10 +2129,10 @@ bool moveplatform(physent *p, const vec &dir)
 
 #define dir(name,v,d,s,os) ICOMMAND(name, "D", (int *down), { player->s = *down!=0; player->v = player->s ? d : (player->os ? -(d) : 0); });
 
-dir(backward, move,   -1, k_down,  k_up);
-dir(forward,  move,    1, k_up,    k_down);
-dir(left,     strafe,  1, k_left,  k_right);
-dir(right,    strafe, -1, k_right, k_left);
+dir(run_S, move,   -1, k_down,  k_up);
+dir(run_N,  move,    1, k_up,    k_down);
+dir(run_W,     strafe,  1, k_left,  k_right);
+dir(run_E,    strafe, -1, k_right, k_left);
 
 ICOMMAND(jump,   "D", (int *down), { if(!*down || game::canjump()) player->jumping = *down!=0; });
 ICOMMAND(attack, "D", (int *down), { game::doattack(*down!=0); });

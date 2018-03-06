@@ -107,34 +107,53 @@ struct physent                                  // base entity type, can be affe
     bool maymove() const { return timeinair || physstate < PHYS_FLOOR || vel.squaredlen() > 1e-4f || deltapos.squaredlen() > 1e-4f; } 
 };
 
+// animations
 enum
 {
-    ANIM_DEAD = 0, ANIM_DYING, ANIM_IDLE,
-    ANIM_FORWARD, ANIM_BACKWARD, ANIM_LEFT, ANIM_RIGHT,
+    ANIM_MAPMODEL = 0,
+    ANIM_GAMESPECIFIC
+};
+
+enum
+{
+    ANIM_DEAD = ANIM_GAMESPECIFIC, ANIM_DYING,
+    ANIM_IDLE, ANIM_RUN_N, ANIM_RUN_NE, ANIM_RUN_E, ANIM_RUN_SE, ANIM_RUN_S, ANIM_RUN_SW, ANIM_RUN_W, ANIM_RUN_NW,
+    ANIM_JUMP, ANIM_JUMP_N, ANIM_JUMP_NE, ANIM_JUMP_E, ANIM_JUMP_SE, ANIM_JUMP_S, ANIM_JUMP_SW, ANIM_JUMP_W, ANIM_JUMP_NW,
+    ANIM_SINK, ANIM_SWIM,
     ANIM_HOLD1, ANIM_HOLD2, ANIM_HOLD3, ANIM_HOLD4, ANIM_HOLD5, ANIM_HOLD6, ANIM_HOLD7,
     ANIM_ATTACK1, ANIM_ATTACK2, ANIM_ATTACK3, ANIM_ATTACK4, ANIM_ATTACK5, ANIM_ATTACK6, ANIM_ATTACK7,
+    ANIM_CROUCH, ANIM_CROUCH_N, ANIM_CROUCH_NE, ANIM_CROUCH_E, ANIM_CROUCH_SE, ANIM_CROUCH_S, ANIM_CROUCH_SW, ANIM_CROUCH_W, ANIM_CROUCH_NW,
+    ANIM_CROUCH_JUMP, ANIM_CROUCH_JUMP_N, ANIM_CROUCH_JUMP_NE, ANIM_CROUCH_JUMP_E, ANIM_CROUCH_JUMP_SE, ANIM_CROUCH_JUMP_S, ANIM_CROUCH_JUMP_SW, ANIM_CROUCH_JUMP_W, ANIM_CROUCH_JUMP_NW,
+    ANIM_CROUCH_SINK, ANIM_CROUCH_SWIM,
+    ANIM_SHOOT, ANIM_MELEE,
     ANIM_PAIN,
-    ANIM_JUMP, ANIM_SINK, ANIM_SWIM,
     ANIM_EDIT, ANIM_LAG, ANIM_TAUNT, ANIM_WIN, ANIM_LOSE,
-    ANIM_GUN_IDLE, ANIM_GUN_SHOOT,
-    ANIM_VWEP_IDLE, ANIM_VWEP_SHOOT, ANIM_SHIELD, ANIM_POWERUP,
-    ANIM_MAPMODEL, ANIM_TRIGGER,
-    NUMANIMS
+    ANIM_GUN_IDLE, ANIM_GUN_SHOOT, ANIM_GUN_MELEE,
+    ANIM_SHIELD, ANIM_POWERUP,
+    ANIM_VWEP_IDLE, ANIM_VWEP_SHOOT, ANIM_VWEP_MELEE,
+    NUMANIMS, ANIM_TRIGGER
 };
 
 static const char * const animnames[] =
 {
-    "dead", "dying", "idle",
-    "forward", "backward", "left", "right",
-    "hold 1", "hold 2", "hold 3", "hold 4", "hold 5", "hold 6", "hold 7",
+    "mapmodel",
+    "dead", "dying",
+    "idle", "run_N", "run_NE", "run_E", "run_SE", "run_S", "run_SW", "run_W", "run_NW",
+    "jump", "jump_N", "jump_NE", "jump_E", "jump_SE", "jump_S", "jump_SW", "jump_W", "jump_NW",
+    "sink", "swim",
     "attack 1", "attack 2", "attack 3", "attack 4", "attack 5", "attack 6", "attack 7",
+    "hold 1", "hold 2", "hold 3", "hold 4", "hold 5", "hold 6", "hold 7",
+    "crouch", "crouch_N", "crouch_NE", "crouch_E", "crouch_SE", "crouch_S", "crouch_SW", "crouch_W", "crouch_NW",
+    "crouch_jump", "crouch_jump_N", "crouch_jump_NE", "crouch_jump_E", "crouch_jump_SE", "crouch_jump_S", "crouch_jump_SW", "crouch_jump_W", "crouch_jump_NW",
+    "crouch_sink", "crouch_swim",
+    "shoot", "melee",
     "pain",
-    "jump", "sink", "swim",
     "edit", "lag", "taunt", "win", "lose",
-    "gun idle", "gun shoot",
-    "vwep idle", "vwep shoot", "shield", "powerup",
-    "mapmodel", "trigger"
+    "gun idle", "gun shoot", "gun melee",
+    "shield", "powerup",
+    "vwep idle", "vwep shoot", "vwep melee", "trigger"
 };
+
 
 #define ANIM_ALL         0x7F
 #define ANIM_INDEX       0x7F
