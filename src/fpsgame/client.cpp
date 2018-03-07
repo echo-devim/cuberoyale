@@ -1818,16 +1818,16 @@ namespace game
                     //inform the player displaying the message about the dangerzone direction
                 	switch (dangerzone_position) {
                         case NORTH:
-                            conoutf("The storm is coming from north");
+                            conoutf("The tsunami is coming from north");
                             break;
                         case EAST:
-                            conoutf("The storm is coming from east");
+                            conoutf("The tsunami is coming from east");
                             break;
                         case SOUTH:
-                            conoutf("The storm is coming from south");
+                            conoutf("The tsunami is coming from south");
                             break;
                         case WEST:
-                            conoutf("The storm is coming from west");
+                            conoutf("The tsunami is coming from west");
                             break;    
                     }
                 	break;
