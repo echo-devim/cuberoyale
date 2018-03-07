@@ -226,10 +226,10 @@ struct md2 : vertmodel, vertloader<md2>
                 case ANIM_DEAD:
                     n -= varseed%3;
                     break;
-                case ANIM_FORWARD:
-                case ANIM_BACKWARD:
-                case ANIM_LEFT:
-                case ANIM_RIGHT:
+                case ANIM_RUN_N:
+                case ANIM_RUN_S:
+                case ANIM_RUN_E:
+                case ANIM_RUN_W:
                 case ANIM_SWIM:
                     info.speed = 5500.0f/d->maxspeed;
                     break;

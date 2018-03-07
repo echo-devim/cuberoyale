@@ -109,6 +109,7 @@ struct physent                                  // base entity type, can be affe
 
 // animations
 
+//pay attention here, the order could be important.
 enum
 {
     ANIM_DEAD = 0, ANIM_DYING,
