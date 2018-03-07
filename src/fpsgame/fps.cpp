@@ -236,7 +236,6 @@ namespace game
     //Function to update the progress of the danger zone, resizing the safe area
     void updatedangerzone() {
         int elapsed_millis = gamelimit - max(maplimit - lastmillis, 0);
-        conoutf("maplimit %d, lastmillis %d, gamelimit %d, elapsed_millis %d\n", maplimit, lastmillis, gamelimit, elapsed_millis);
         //creatergbasurface / create_ent
         //The danger zone is just a dark wall moving from one corner to the opposite corner
         //hints: player->inwater
