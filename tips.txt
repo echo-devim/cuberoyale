@@ -1,0 +1,3 @@
+Map editing:
+- Use /savebrush <name> and /pastebrush <name> to copy and paste the current selection among different maps.
+  (editcopy and editpaste don't work)
