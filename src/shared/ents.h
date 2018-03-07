@@ -108,15 +108,10 @@ struct physent                                  // base entity type, can be affe
 };
 
 // animations
-enum
-{
-    ANIM_MAPMODEL = 0,
-    ANIM_GAMESPECIFIC
-};
 
 enum
 {
-    ANIM_DEAD = ANIM_GAMESPECIFIC, ANIM_DYING,
+    ANIM_DEAD = 0, ANIM_DYING,
     ANIM_IDLE, ANIM_RUN_N, ANIM_RUN_NE, ANIM_RUN_E, ANIM_RUN_SE, ANIM_RUN_S, ANIM_RUN_SW, ANIM_RUN_W, ANIM_RUN_NW,
     ANIM_JUMP, ANIM_JUMP_N, ANIM_JUMP_NE, ANIM_JUMP_E, ANIM_JUMP_SE, ANIM_JUMP_S, ANIM_JUMP_SW, ANIM_JUMP_W, ANIM_JUMP_NW,
     ANIM_SINK, ANIM_SWIM,
@@ -131,12 +126,11 @@ enum
     ANIM_GUN_IDLE, ANIM_GUN_SHOOT, ANIM_GUN_MELEE,
     ANIM_SHIELD, ANIM_POWERUP,
     ANIM_VWEP_IDLE, ANIM_VWEP_SHOOT, ANIM_VWEP_MELEE,
-    NUMANIMS, ANIM_TRIGGER
+    NUMANIMS, ANIM_MAPMODEL, ANIM_TRIGGER
 };
 
 static const char * const animnames[] =
 {
-    "mapmodel",
     "dead", "dying",
     "idle", "run_N", "run_NE", "run_E", "run_SE", "run_S", "run_SW", "run_W", "run_NW",
     "jump", "jump_N", "jump_NE", "jump_E", "jump_SE", "jump_S", "jump_SW", "jump_W", "jump_NW",
@@ -151,7 +145,7 @@ static const char * const animnames[] =
     "edit", "lag", "taunt", "win", "lose",
     "gun idle", "gun shoot", "gun melee",
     "shield", "powerup",
-    "vwep idle", "vwep shoot", "vwep melee", "trigger"
+    "vwep idle", "vwep shoot", "vwep melee", "mapmodel", "trigger"
 };
 
 
