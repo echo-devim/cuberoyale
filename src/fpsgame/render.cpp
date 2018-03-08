@@ -115,7 +115,7 @@ namespace game
                 preloadmodel(mdl->blueteam);
                 preloadmodel(mdl->redteam);
             }
-            else preloadmodel(mdl->ffa);
+            else preloadmodel(mdl->battleroyale);
             if(mdl->vwep) preloadmodel(mdl->vwep);
             if(mdl->quad) preloadmodel(mdl->quad);
             loopj(3) if(mdl->armour[j]) preloadmodel(mdl->armour[j]);
@@ -171,7 +171,7 @@ namespace game
             d->muzzle = vec(-1, -1, -1);
             a[ai++] = modelattach("tag_muzzle", &d->muzzle);
         }
-        const char *mdlname = mdl.ffa;
+        const char *mdlname = mdl.battleroyale;
         switch(testteam ? testteam-1 : team)
         {
             case 1: mdlname = mdl.blueteam; break;

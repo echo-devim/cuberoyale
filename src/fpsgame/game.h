@@ -116,8 +116,9 @@ static struct gamemodeinfo
     { "SP", M_LOCAL | M_CLASSICSP, NULL },
     { "DMSP", M_LOCAL | M_DMSP, NULL },
     { "demo", M_DEMO | M_LOCAL, NULL},
-    { "ffa", M_LOBBY, "Free For All: Collect items for ammo. Frag everyone to score points." },
+    { "battle royale", M_LOBBY, "Explore the map, collect items and survive. A big tsunami will come during the match, escape from it."},
     { "coop edit", M_EDIT, "Cooperative Editing: Edit maps with multiple players simultaneously." },
+    { "ffa", M_LOBBY, "Free For All: Collect items for ammo. Frag everyone to score points." },
     { "teamplay", M_TEAM, "Teamplay: Collect items for ammo. Frag \fs\f3the enemy team\fr to score points for \fs\f1your team\fr." },
     { "instagib", M_NOITEMS | M_INSTA, "Instagib: You spawn with full rifle ammo and die instantly from one shot. There are no items. Frag everyone to score points." },
     { "insta team", M_NOITEMS | M_INSTA | M_TEAM, "Instagib Team: You spawn with full rifle ammo and die instantly from one shot. There are no items. Frag \fs\f3the enemy team\fr to score points for \fs\f1your team\fr." },
@@ -823,9 +824,9 @@ namespace game
     // render
     struct playermodelinfo
     {
-        const char *ffa, *blueteam, *redteam, *hudguns,
+        const char *battleroyale, *blueteam, *redteam, *hudguns,
                    *vwep, *quad, *armour[3],
-                   *ffaicon, *blueicon, *redicon;
+                   *battleroyaleicon, *blueicon, *redicon;
         bool ragdoll;
     };
 

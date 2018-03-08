@@ -210,7 +210,7 @@ namespace game
                     g.background(0x808080, numgroups>1 ? 3 : 5);
                 }
                 const playermodelinfo &mdl = getplayermodelinfo(o);
-                const char *icon = sg.team && m_teammode ? (isteam(player1->team, sg.team) ? mdl.blueicon : mdl.redicon) : mdl.ffaicon;
+                const char *icon = sg.team && m_teammode ? (isteam(player1->team, sg.team) ? mdl.blueicon : mdl.redicon) : mdl.battleroyaleicon;
                 g.text("", 0, icon);
                 if(o==player1 && highlightscore && (multiplayer(false) || demoplayback || players.length() > 1)) g.poplist();
             });

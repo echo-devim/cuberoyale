@@ -443,7 +443,7 @@ namespace game
         fpsent *d = getclient(cn);
         if(!d || d->state==CS_SPECTATOR) return "spectator";
         const playermodelinfo &mdl = getplayermodelinfo(d);
-        return m_teammode ? (isteam(player1->team, d->team) ? mdl.blueicon : mdl.redicon) : mdl.ffaicon;
+        return m_teammode ? (isteam(player1->team, d->team) ? mdl.blueicon : mdl.redicon) : mdl.battleroyaleicon;
     }
     ICOMMAND(getclienticon, "i", (int *cn), result(getclienticon(*cn)));
 
